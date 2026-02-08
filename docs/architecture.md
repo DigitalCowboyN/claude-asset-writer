@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Claude Asset Writer is a system for authoring Claude Code assets (rules, agents, skills, commands) according to established standards. It handles complexity detection, scope classification (personal vs project), decomposition of large inputs, type and weight classification, model selection, and user confirmation flows.
+The Claude Asset Writer is a system for authoring Claude Code assets (rules, agents, skills, commands) according to established standards. It handles complexity detection, scope classification (personal vs project), decomposition of large inputs, type and weight classification, model selection, batch processing with parallel execution, and user confirmation flows.
 
 ## System Components
 
@@ -12,7 +12,8 @@ flowchart TB
         rewrite["rewrite-ccasset\n(commands/rewrite-ccasset.md)"]
     end
 
-    subgraph Detection["Detection Agents"]
+    subgraph Analysis["Analysis Agents"]
+        batch["batch-analyzer\nmodel: opus"]
         complexity["complexity-detector\nmodel: sonnet"]
         scope["scope-detector\nmodel: haiku"]
         model["model-selector\nmodel: haiku"]
@@ -34,6 +35,7 @@ flowchart TB
         decomp["asset-decomposer\nmodel: opus"]
     end
 
+    rewrite --> batch
     rewrite --> complexity
     rewrite --> scope
     rewrite --> model
@@ -46,7 +48,56 @@ flowchart TB
 
 ## Data Flow
 
-### Full Pipeline
+### Input Detection
+
+```mermaid
+flowchart TD
+    input["User Input"]
+    entry["/rewrite-ccasset"]
+    detect{"Single or Batch?"}
+
+    input --> entry --> detect
+
+    detect -->|"Single file/content"| single["Single-Item Flow\n(Steps 2-10)"]
+    detect -->|"Multiple files/glob/sections"| batch["Batch Flow\n(Steps 1a-1h)"]
+```
+
+### Batch Pipeline
+
+```mermaid
+flowchart TD
+    parse["Step 1a: Parse Inputs\n(read all files)"]
+    ba["Step 1b: batch-analyzer\n(relationships, merges, phases)"]
+    b1[/"BARRIER B1"/]
+
+    cd["Step 1c: complexity-detector\n(x N in parallel)"]
+    b2[/"BARRIER B2"/]
+    decomp["asset-decomposer\n(complex items only, parallel)"]
+
+    sd["Step 1d: scope-detector\n(x N in parallel)"]
+    b3[/"BARRIER B3"/]
+
+    scope_prompt["Step 1e: User Scope Decisions\n(batched prompts)"]
+    b4[/"BARRIER B4"/]
+
+    author["Step 1f: Phased Authoring\n(parallel per phase, sequential between phases)"]
+    b5[/"BARRIER B5"/]
+
+    ms["Step 1g: model-selector\n(x N in parallel)"]
+    model_prompt["User Confirms Models"]
+    b6[/"BARRIER B6"/]
+
+    claude_md["Step 1h: CLAUDE.md Writes\n(serialized, one at a time)"]
+    b7[/"BARRIER B7"/]
+    report["Final Report"]
+
+    parse --> ba --> b1 --> cd --> b2
+    b2 -->|"complex items"| decomp --> sd
+    b2 -->|"simple items"| sd
+    sd --> b3 --> scope_prompt --> b4 --> author --> b5 --> ms --> model_prompt --> b6 --> claude_md --> b7 --> report
+```
+
+### Single-Item Full Pipeline
 
 ```mermaid
 flowchart TD
@@ -231,6 +282,36 @@ flowchart LR
 ```
 
 **Note:** Personal content flows through without prompting. Only project-scoped and ambiguous content triggers scope confirmation.
+
+---
+
+## Batch Processing
+
+### Synchronization Barriers
+
+The batch flow uses 7 explicit barriers to ensure correct execution order:
+
+| Barrier | After | Before | Purpose |
+|---|---|---|---|
+| B1 | Batch analysis | Complexity detection | Need merge/phase plan first |
+| B2 | All complexity detections | Scope detection | Need to know which items expand |
+| B3 | All scope detections | User scope prompts | Need all scopes to batch prompts |
+| B4 | User scope decisions | Authoring | Need to know what to write and where |
+| B5 | All authoring (all phases) | Model selection | Need written files to analyze |
+| B6 | All model selections | CLAUDE.md writes | Need user model confirmation first |
+| B7 | All CLAUDE.md writes | Final report | Everything must be written |
+
+### Parallel Execution Model
+
+The Task tool blocks until the subagent returns. "Parallel" means dispatching multiple Task calls in a single orchestrator message — Claude Code processes these concurrently. The orchestrator waits for all to return before proceeding past a barrier.
+
+### CLAUDE.md Write Serialization
+
+Multiple project-scoped writes to the same CLAUDE.md file are always serialized (one at a time) to prevent race conditions. Each write reads the current file state, checks for conflicts, and appends.
+
+### Error Handling
+
+When a parallel dispatch fails: retry once. If retry fails: mark as failed, continue with remaining items. One failed item never blocks the batch. All failures are reported in the final report.
 
 ---
 

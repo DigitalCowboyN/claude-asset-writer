@@ -10,6 +10,7 @@ A system for authoring Claude Code assets (rules, agents, skills, commands) acco
 - **Complexity Detection** — Identifies when input is too complex for a single asset
 - **Automatic Decomposition** — Breaks complex input into multiple coordinated assets with per-component scope
 - **Model Selection** — Recommends appropriate model (haiku/sonnet/opus) for agents
+- **Batch Processing** — Processes multiple inputs in parallel with relationship detection and dependency ordering
 - **User Confirmation** — Prompts for scope decisions, model selection, and registration
 
 ## Quick Start
@@ -31,10 +32,16 @@ cp commands/*.md ~/.claude/commands/
 Invoke the rewrite command with content to process:
 
 ```bash
-# From a file
+# Single file
 /rewrite-ccasset ~/path/to/content.md
 
-# From inline content
+# Multiple files (batch)
+/rewrite-ccasset file1.md file2.md file3.md
+
+# Glob pattern (batch)
+/rewrite-ccasset ~/.claude/skills/python-*.md
+
+# Inline content
 /rewrite-ccasset
 [paste or describe content]
 ```
@@ -47,10 +54,11 @@ Invoke the rewrite command with content to process:
 |---|---|
 | `commands/rewrite-ccasset.md` | Main entry point for all asset writing |
 
-### Detection Agents
+### Analysis Agents
 
 | File | Purpose |
 |---|---|
+| `agents/batch-analyzer.md` | Detects cross-input relationships for batch processing |
 | `agents/complexity-detector.md` | Determines if input needs decomposition |
 | `agents/scope-detector.md` | Classifies content as personal or project-scoped |
 | `agents/model-selector.md` | Recommends model for agent files |
@@ -89,6 +97,14 @@ Input → Complexity (complex) → Decomposer → Scope (per component) → Auth
 ```
 
 Personal components go to `~/.claude/`. Project components (with user confirmation) go to project `CLAUDE.md` or project `.claude/` directory.
+
+### Batch Input Flow
+
+```
+Inputs → Batch Analysis → Parallel Complexity → Parallel Scope → User Prompts → Phased Authoring → Model Selection → Report
+```
+
+Multiple inputs are analyzed together for relationships (overlap, dependency, complementary). Overlapping inputs are merged. Execution follows dependency-ordered phases with 7 synchronization barriers.
 
 ## Asset Types
 
@@ -169,6 +185,27 @@ Created 4 assets:
 ```
 
 The orchestrator coordinates the three agents in sequence.
+
+## Example: Batch Processing Related Files
+
+Input: 5 Python skill files, two overlapping
+
+Output:
+```
+Batch Processing Complete
+
+Inputs: 5 → Work items: 4 (after merge) → Assets created: 4
+
+Merges Applied:
+- python-typing + python-type-hints → python-type-system
+
+Personal Assets (written to ~/.claude/):
+  ~/.claude/skills/python-type-system/SKILL.md
+  ~/.claude/skills/python-async/SKILL.md
+  ~/.claude/skills/python-dataclasses/SKILL.md
+  ~/.claude/skills/python-testing/SKILL.md (phase 1)
+  ~/.claude/skills/python-mocking/SKILL.md (phase 2, depends on testing)
+```
 
 ## Design Principles
 
