@@ -1,15 +1,16 @@
 # Claude Asset Writer
 
-A system for authoring Claude Code assets (rules, agents, skills, commands) according to established standards. Handles complexity detection, automatic decomposition of large inputs, type and weight classification, and model selection.
+A system for authoring Claude Code assets (rules, agents, skills, commands) according to established standards. Handles complexity detection, scope classification (personal vs project), automatic decomposition of large inputs, type and weight classification, and model selection.
 
 ## Features
 
 - **Automatic Type Detection** — Determines if input should become a rule, agent, skill, or command
+- **Scope Classification** — Distinguishes personal config (`~/.claude/`) from project config (`CLAUDE.md`)
 - **Weight Classification** — Distinguishes lightweight (focused) from heavyweight (orchestrating) assets
 - **Complexity Detection** — Identifies when input is too complex for a single asset
-- **Automatic Decomposition** — Breaks complex input into multiple coordinated assets
+- **Automatic Decomposition** — Breaks complex input into multiple coordinated assets with per-component scope
 - **Model Selection** — Recommends appropriate model (haiku/sonnet/opus) for agents
-- **User Confirmation** — Prompts for model selection and registration decisions
+- **User Confirmation** — Prompts for scope decisions, model selection, and registration
 
 ## Quick Start
 
@@ -51,6 +52,7 @@ Invoke the rewrite command with content to process:
 | File | Purpose |
 |---|---|
 | `agents/complexity-detector.md` | Determines if input needs decomposition |
+| `agents/scope-detector.md` | Classifies content as personal or project-scoped |
 | `agents/model-selector.md` | Recommends model for agent files |
 
 ### Authoring Agents
@@ -75,14 +77,18 @@ Invoke the rewrite command with content to process:
 ### Simple Input Flow
 
 ```
-Input → Complexity Check (simple) → Type Detection → Authoring Agent → Model Selection → Done
+Input → Complexity (simple) → Scope Detection → Type Detection → Authoring Agent → Model Selection → Done
 ```
+
+Personal content flows through without prompting. Project content prompts the user.
 
 ### Complex Input Flow
 
 ```
-Input → Complexity Check (complex) → Decomposer → Multiple Authoring Agents → Model Selection (each) → Orchestrator (if needed) → Done
+Input → Complexity (complex) → Decomposer → Scope (per component) → Authoring Agents → Model Selection → Done
 ```
+
+Personal components go to `~/.claude/`. Project components (with user confirmation) go to project `CLAUDE.md` or project `.claude/` directory.
 
 ## Asset Types
 
@@ -122,6 +128,32 @@ Input → Complexity Check (complex) → Decomposer → Multiple Authoring Agent
 
 See `docs/architecture.md` for detailed system architecture and data flow diagrams.
 
+## Scope Classification
+
+| Scope | Destination | User Prompt? |
+|---|---|---|
+| **Personal** | `~/.claude/` | No |
+| **Project** | `<project>/CLAUDE.md` or `<project>/.claude/` | Yes |
+| **Ambiguous** | User decides | Yes |
+
+Project-scoped rules and skills are appended as inline sections to `CLAUDE.md`. Project-scoped agents and commands are written as files to the project's `.claude/` directory.
+
+## Example: Mixed-Scope Input (Cursor Rules)
+
+Input: Cursor rules with coding style + project config
+
+Output:
+```
+Personal Assets (written to ~/.claude/):
+  ~/.claude/skills/coding-style/SKILL.md
+  ~/.claude/skills/naming-conventions/SKILL.md
+
+Project Assets (appended to CLAUDE.md):
+  ## Project Structure (directory layout)
+  ## Database Tooling (Alembic, SQLAlchemy)
+  ## Deployment (Docker, Redis)
+```
+
 ## Example: Complex Input Decomposition
 
 Input: 400-line "super agent" handling security + performance + reporting
@@ -142,5 +174,6 @@ The orchestrator coordinates the three agents in sequence.
 
 1. **Minimal Dispatch Prompts** — Subagents know their job; orchestrators pass content + goal only
 2. **Progressive Complexity** — Simple inputs get simple handling; complexity triggers decomposition
-3. **User Control** — Model selection and registration are confirmed, not automatic
-4. **Focused Assets** — Each asset does one thing well; complex tasks become multiple assets
+3. **Scope Awareness** — Personal style goes to `~/.claude/`; project config goes to project directories
+4. **User Control** — Scope decisions, model selection, and registration are confirmed, not automatic
+5. **Focused Assets** — Each asset does one thing well; complex tasks become multiple assets

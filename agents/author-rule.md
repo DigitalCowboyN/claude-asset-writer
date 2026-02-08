@@ -74,7 +74,8 @@ Rule is appropriate only if ALL true:
 If any fail, recommend skill or command instead.
 
 ### Step 3: Write and Ask About Registration
-Write to `~/.claude/rules/<name>.md`
+If `<destination>` provided in dispatch prompt: write to the specified path.
+Otherwise: write to `~/.claude/rules/<name>.md`
 
 Ask: "Should this rule be referenced in CLAUDE.md? (Rules auto-load, so typically no.)"
 

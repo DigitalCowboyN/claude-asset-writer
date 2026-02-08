@@ -95,7 +95,8 @@ If creating from scratch:
 4. What gets reported at the end
 
 ### Step 3: Write and Ask About Registration
-Write to `~/.claude/agents/<name>.md`
+If `<destination>` provided in dispatch prompt: write to the specified path.
+Otherwise: write to `~/.claude/agents/<name>.md`
 
 Ask the user:
 1. "Should this agent be registered in any orchestrators?"

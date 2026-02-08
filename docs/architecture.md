@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Claude Asset Writer is a system for authoring Claude Code assets (rules, agents, skills, commands) according to established standards. It handles complexity detection, decomposition of large inputs, type and weight classification, model selection, and user confirmation flows.
+The Claude Asset Writer is a system for authoring Claude Code assets (rules, agents, skills, commands) according to established standards. It handles complexity detection, scope classification (personal vs project), decomposition of large inputs, type and weight classification, model selection, and user confirmation flows.
 
 ## System Components
 
@@ -14,6 +14,7 @@ flowchart TB
 
     subgraph Detection["Detection Agents"]
         complexity["complexity-detector\nmodel: sonnet"]
+        scope["scope-detector\nmodel: haiku"]
         model["model-selector\nmodel: haiku"]
     end
 
@@ -34,6 +35,7 @@ flowchart TB
     end
 
     rewrite --> complexity
+    rewrite --> scope
     rewrite --> model
     rewrite --> Lightweight
     rewrite --> Heavyweight
@@ -59,7 +61,15 @@ flowchart TD
 
     subgraph simple_path["Phase 2b: Single Asset Flow"]
         direction TB
-        classify["Determine Type & Weight Class"]
+        sd["scope-detector"]
+        sd -->|personal| classify["Determine Type\n& Weight Class"]
+        sd -->|project| scope_prompt["User Prompt:\nInclude in project?"]
+        sd -->|ambiguous| scope_prompt2["User Prompt:\nPersonal or project?"]
+        scope_prompt -->|include| classify
+        scope_prompt -->|skip| skipped["Skipped"]
+        scope_prompt -->|make personal| classify
+        scope_prompt2 -->|personal| classify
+        scope_prompt2 -->|project| classify
         classify -->|rule| ar["author-rule"]
         classify -->|agent + lightweight| aa["author-agent"]
         classify -->|skill| as["author-skill"]
@@ -90,7 +100,9 @@ flowchart TD
     subgraph complex_path["Phase 2a: Decomposition Flow"]
         direction TB
         decompose["asset-decomposer"]
-        decompose -->|"x N assets"| authors["author-agent / author-skill\nauthor-rule / author-command"]
+        decompose --> scope_each["scope-detector\n(per component)"]
+        scope_each -->|personal| authors["author-agent / author-skill\nauthor-rule / author-command"]
+        scope_each -->|"project (user confirms)"| proj_dest["CLAUDE.md sections\nor project .claude/ files"]
         decompose -->|"if needed"| orch["author-orchestrator"]
 
         authors --> ms4["model-selector (x N)"]
@@ -136,6 +148,29 @@ flowchart TD
     light -->|command| acmd["author-command"]
     light -->|agent| aagent["author-agent"]
 ```
+
+### Scope Detection
+
+```mermaid
+flowchart TD
+    input["Input Content"]
+    input --> scan{"Scan for Signals"}
+
+    scan -->|"Coding style preferences\nNaming conventions\nLanguage idioms\nPattern preferences"| personal["SCOPE: personal\n-> ~/.claude/"]
+
+    scan -->|"Specific directories\nNamed tools/dependencies\nArchitectural decisions\nDeployment/infra specifics"| project["SCOPE: project\n-> project CLAUDE.md\n(user confirms)"]
+
+    scan -->|"Tech-specific principles\nCould be style OR requirement\nTeam conventions"| ambiguous["SCOPE: ambiguous\n(user decides)"]
+```
+
+#### Project Destination Routing
+
+| Asset Type | Project Destination | Format |
+|---|---|---|
+| rule | `<project>/CLAUDE.md` | Inline section |
+| skill | `<project>/CLAUDE.md` | Inline section |
+| agent | `<project>/.claude/agents/` | Separate file |
+| command | `<project>/.claude/commands/` | Separate file |
 
 ### Complexity Detection
 
@@ -188,11 +223,14 @@ flowchart TD
 flowchart LR
     subgraph Confirmation Points
         direction TB
-        p1["1. Model Selection\nmodel-selector recommends\n-> user accepts or overrides"]
-        p2["2. Decomposition Models\nall model selections at once\n-> user confirms batch"]
-        p3["3. Registration Prompts\nRegister in orchestrators?\nReference in CLAUDE.md?"]
+        p0["1. Scope Decision\nProject content detected\n-> user confirms: include, skip, or make personal"]
+        p1["2. Model Selection\nmodel-selector recommends\n-> user accepts or overrides"]
+        p2["3. Decomposition Models\nall model selections at once\n-> user confirms batch"]
+        p3["4. Registration Prompts\nRegister in orchestrators?\nReference in CLAUDE.md?"]
     end
 ```
+
+**Note:** Personal content flows through without prompting. Only project-scoped and ambiguous content triggers scope confirmation.
 
 ---
 
@@ -212,3 +250,12 @@ flowchart LR
 ### Adding New Model Selection Signals
 
 1. Update `model-selector.md` with new criteria
+
+### Adding New Scope Signals
+
+1. Update `scope-detector.md` signal taxonomy with new personal/project/ambiguous indicators
+
+### Adding New Project Destinations
+
+1. Update `rewrite-ccasset.md` Step 5a for new inline formatting patterns
+2. Update `asset-decomposer.md` Step 4 for new project file routing

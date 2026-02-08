@@ -92,7 +92,8 @@ Each dispatch should be one line:
 The subagent has its own template and requirements.
 
 ### Step 4: Write and Ask About Registration
-Write to `~/.claude/commands/<name>.md`
+If `<destination>` provided in dispatch prompt: write to the specified path.
+Otherwise: write to `~/.claude/commands/<name>.md`
 
 Ask the user:
 1. "Should this orchestrator be referenced in CLAUDE.md?"

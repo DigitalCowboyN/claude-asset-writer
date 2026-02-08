@@ -80,7 +80,8 @@ Transform aggressive mandates:
 - "Use PROACTIVELY" → "Use when [specific condition]"
 
 ### Step 4: Write and Ask About Registration
-Write to `~/.claude/agents/<name>.md`
+If `<destination>` provided in dispatch prompt: write to the specified path.
+Otherwise: write to `~/.claude/agents/<name>.md`
 
 Ask:
 1. "Should this agent be registered in any orchestrators?"

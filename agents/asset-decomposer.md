@@ -10,7 +10,7 @@ tools: [Task, Read, Write, Edit, AskUserQuestion]
 
 # Asset Decomposer Agent
 
-Take complex input and a decomposition plan, create multiple assets by dispatching to authoring agents, and optionally create an orchestrator to coordinate them.
+Take complex input and a decomposition plan, classify scope per component, create multiple assets by dispatching to authoring agents, and optionally create an orchestrator to coordinate them.
 
 ## When to Use
 
@@ -38,9 +38,55 @@ For each component in the plan:
 - Identify which parts of the original content belong to it
 - Extract that content as a focused subset
 
-### Step 3: Dispatch to Authoring Agents
+### Step 3: Classify Scope for Each Component
 
-For each component, dispatch to the appropriate authoring agent:
+For each component, dispatch to `scope-detector`:
+
+```
+Classify the scope of this content:
+<content>
+[extracted content for this component]
+</content>
+```
+
+Group results into three categories:
+- **Personal** components → proceed directly to Step 4
+- **Project** components → prompt user (Step 3a)
+- **Ambiguous** components → prompt user (Step 3b)
+
+### Step 3a: Handle Project-Scoped Components
+
+Batch prompt with AskUserQuestion:
+
+```
+These components appear project-specific:
+1. [name]: [rationale from scope-detector]
+2. [name]: [rationale]
+
+How should these be handled?
+```
+
+Options:
+1. "Include all in project at [cwd]" (Recommended)
+2. "Skip all project-specific content"
+3. "Decide individually"
+
+If "Decide individually": prompt per component with options [Include | Skip | Make personal].
+
+### Step 3b: Handle Ambiguous Components
+
+Prompt per component with AskUserQuestion:
+
+```
+Could be personal or project-specific:
+- [name]: [rationale]
+```
+
+Options: [Personal | Project | Skip]
+
+### Step 4: Dispatch to Authoring Agents
+
+For **personal-scoped** components, dispatch to the appropriate authoring agent:
 
 | Component Type | Agent |
 |---|---|
@@ -62,11 +108,26 @@ Asset name: [component name]
 Purpose: [component description from plan]
 ```
 
-Collect the file path each authoring agent creates.
+For **project-scoped rules/skills**: format as CLAUDE.md section directly:
 
-### Step 4: Model Selection for Agents
+```markdown
+## [Component Name]
 
-For each agent component created:
+[Requirements as concise bullet points]
+```
+
+Append to `<project>/CLAUDE.md`. Create the file if it doesn't exist.
+
+For **project-scoped agents/commands**: dispatch to authoring agent with destination:
+```
+Create this asset from the following content:
+<content>[extracted content]</content>
+<destination>[project path]/.claude/agents/[name].md</destination>
+```
+
+### Step 5: Model Selection for Agents
+
+For each agent component created (personal or project):
 - Dispatch to `model-selector` with the file path
 - Collect the model recommendation
 
@@ -76,14 +137,13 @@ Model recommendations for created agents:
 
 1. security-reviewer: opus (coordinates analysis phases)
 2. performance-analyzer: sonnet (standard code analysis)
-3. report-generator: haiku (simple data formatting)
 
 Accept all, or specify adjustments?
 ```
 
 Apply confirmed models to each agent file.
 
-### Step 5: Create Orchestrator (If Needed)
+### Step 6: Create Orchestrator (If Needed)
 
 If `NEEDS_ORCHESTRATOR: yes` in the plan:
 
@@ -98,7 +158,7 @@ Flow: [description from plan]
 Orchestrator name: [suggested name from plan]
 ```
 
-### Step 6: Report All Created Assets
+### Step 7: Report All Created Assets
 
 ```markdown
 ## Decomposition Complete
@@ -106,24 +166,30 @@ Orchestrator name: [suggested name from plan]
 **Original input:** [source description]
 **Components created:** [count]
 
-### Assets Created
+### Personal Assets (written to ~/.claude/)
 
 | File | Type | Purpose | Model |
 |---|---|---|---|
-| ~/.claude/agents/security-reviewer.md | agent | Security analysis | opus |
-| ~/.claude/agents/performance-analyzer.md | agent | Performance analysis | sonnet |
-| ~/.claude/agents/report-generator.md | agent | Report formatting | haiku |
-| ~/.claude/commands/code-auditor.md | orchestrator | Coordinates review phases | — |
+| ~/.claude/skills/coding-style/SKILL.md | skill | Functional style | — |
+| ~/.claude/agents/reviewer.md | agent | Code review | sonnet |
 
-### Coordination
+### Project Assets (appended to CLAUDE.md)
 
-**Relationship:** sequential
-**Orchestrator:** /code-auditor
+| Section | Purpose |
+|---|---|
+| ## Project Structure | Directory layout |
+| ## Database Tooling | Alembic, SQLAlchemy |
 
-**Flow:**
-1. security-reviewer analyzes for vulnerabilities
-2. performance-analyzer identifies bottlenecks
-3. report-generator combines findings
+### Skipped
+
+| Component | Reason |
+|---|---|
+| [name] | User chose to skip |
+
+### Coordination (if applicable)
+
+**Relationship:** [sequential|parallel|conditional]
+**Orchestrator:** /[name]
 ```
 
 ## Output Format

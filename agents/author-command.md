@@ -80,7 +80,8 @@ If command dispatches to multiple agents → redirect to `author-orchestrator`.
 Each step should be actionable with specific instructions.
 
 ### Step 4: Write and Ask About Registration
-Write to `~/.claude/commands/<name>.md`
+If `<destination>` provided in dispatch prompt: write to the specified path.
+Otherwise: write to `~/.claude/commands/<name>.md`
 
 Ask:
 1. "Should this command be referenced in CLAUDE.md?"

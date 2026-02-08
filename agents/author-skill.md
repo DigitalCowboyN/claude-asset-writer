@@ -89,6 +89,8 @@ If rewriting: identify missing activation context, abstract patterns. If creatin
 3. Anti-patterns (2-3 with fixes)
 
 ### Step 4: Write and Ask About Registration
+If `<destination>` provided in dispatch prompt: write to the specified path.
+Otherwise:
 ```bash
 mkdir -p ~/.claude/skills/<name>
 ```
