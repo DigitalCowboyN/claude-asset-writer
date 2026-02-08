@@ -6,167 +6,101 @@ The Claude Asset Writer is a system for authoring Claude Code assets (rules, age
 
 ## System Components
 
-### Orchestrator
+```mermaid
+flowchart TB
+    subgraph Orchestrator
+        rewrite["rewrite-ccasset\n(commands/rewrite-ccasset.md)"]
+    end
 
-| Component | File | Purpose |
-|---|---|---|
-| rewrite-ccasset | `commands/rewrite-ccasset.md` | Main entry point. Routes input through detection, authoring, and model selection phases. |
+    subgraph Detection["Detection Agents"]
+        complexity["complexity-detector\nmodel: sonnet"]
+        model["model-selector\nmodel: haiku"]
+    end
 
-### Detection Agents
+    subgraph Lightweight["Authoring Agents (Lightweight)"]
+        arule["author-rule\nmodel: sonnet"]
+        aagent["author-agent\nmodel: sonnet"]
+        askill["author-skill\nmodel: sonnet"]
+        acmd["author-command\nmodel: sonnet"]
+    end
 
-| Component | File | Model | Purpose |
-|---|---|---|---|
-| complexity-detector | `agents/complexity-detector.md` | sonnet | Analyzes input to determine if it needs decomposition into multiple assets. |
-| model-selector | `agents/model-selector.md` | haiku | Analyzes written agent files to recommend haiku/sonnet/opus. |
+    subgraph Heavyweight["Authoring Agents (Heavyweight)"]
+        aorch["author-orchestrator\nmodel: sonnet"]
+        aheavy["author-heavyweight-agent\nmodel: sonnet"]
+    end
 
-### Authoring Agents (Lightweight)
+    subgraph Decomposition
+        decomp["asset-decomposer\nmodel: opus"]
+    end
 
-| Component | File | Model | Purpose |
-|---|---|---|---|
-| author-rule | `agents/author-rule.md` | sonnet | Authors rules (always-on behavioral instructions). |
-| author-agent | `agents/author-agent.md` | sonnet | Authors lightweight agents (focused, single-purpose). |
-| author-skill | `agents/author-skill.md` | sonnet | Authors skills (contextually-activated domain knowledge). |
-| author-command | `agents/author-command.md` | sonnet | Authors lightweight commands (user-invoked actions). |
-
-### Authoring Agents (Heavyweight)
-
-| Component | File | Model | Purpose |
-|---|---|---|---|
-| author-orchestrator | `agents/author-orchestrator.md` | sonnet | Authors orchestrator commands that dispatch to multiple agents. |
-| author-heavyweight-agent | `agents/author-heavyweight-agent.md` | sonnet | Authors agents that coordinate subagents. |
-
-### Decomposition Agent
-
-| Component | File | Model | Purpose |
-|---|---|---|---|
-| asset-decomposer | `agents/asset-decomposer.md` | opus | Breaks complex input into multiple coordinated assets. |
+    rewrite --> complexity
+    rewrite --> model
+    rewrite --> Lightweight
+    rewrite --> Heavyweight
+    rewrite --> decomp
+```
 
 ---
 
 ## Data Flow
 
-### Entry Point
+### Full Pipeline
 
-All requests enter through `/rewrite-ccasset`:
+```mermaid
+flowchart TD
+    input["User Input\n(file path or content)"]
+    entry["/rewrite-ccasset"]
+    cd["complexity-detector"]
 
-```
-User Input (file path or content)
-         │
-         ▼
-  ┌─────────────┐
-  │  /rewrite-  │
-  │   ccasset   │
-  └──────┬──────┘
-         │
-         ▼
-```
+    input --> entry --> cd
 
-### Phase 1: Complexity Detection
+    cd -->|"COMPLEXITY: simple"| simple_path
+    cd -->|"COMPLEXITY: complex"| complex_path
 
-```
-         │
-         ▼
-  ┌─────────────────┐
-  │   complexity-   │
-  │    detector     │
-  └────────┬────────┘
-           │
-     ┌─────┴─────┐
-     │           │
-  SIMPLE      COMPLEX
-     │           │
-     ▼           ▼
-```
+    subgraph simple_path["Phase 2b: Single Asset Flow"]
+        direction TB
+        classify["Determine Type & Weight Class"]
+        classify -->|rule| ar["author-rule"]
+        classify -->|agent + lightweight| aa["author-agent"]
+        classify -->|skill| as["author-skill"]
+        classify -->|command + lightweight| ac["author-command"]
+        classify -->|agent + heavyweight| ahv["author-heavyweight-agent"]
+        classify -->|command + heavyweight| ao["author-orchestrator"]
 
-### Phase 2a: Decomposition Flow (Complex)
+        aa --> ms1["model-selector"]
+        ahv --> ms2["model-selector"]
+        ao --> ms3["model-selector"]
 
-When complexity-detector returns `COMPLEXITY: complex`:
+        ms1 --> uc1["User Confirm Model"]
+        ms2 --> uc2["User Confirm Model"]
+        ms3 --> uc3["User Confirm Model"]
 
-```
-  COMPLEX
-     │
-     ▼
-  ┌─────────────────┐
-  │ asset-decomposer│
-  └────────┬────────┘
-           │
-           ├──────────────────────────────────────┐
-           │                                      │
-           ▼                                      ▼
-  ┌─────────────────┐                   ┌─────────────────┐
-  │  author-agent   │ (×N)              │author-orchestr- │
-  │  author-skill   │                   │     ator        │
-  │  author-rule    │                   │  (if needed)    │
-  └────────┬────────┘                   └────────┬────────┘
-           │                                      │
-           ▼                                      │
-  ┌─────────────────┐                             │
-  │ model-selector  │ (×N for agents)             │
-  └────────┬────────┘                             │
-           │                                      │
-           ├──────────────────────────────────────┘
-           │
-           ▼
-  ┌─────────────────┐
-  │  User Confirm   │
-  │  (all models)   │
-  └────────┬────────┘
-           │
-           ▼
-  ┌─────────────────┐
-  │     Report      │
-  │  (all assets)   │
-  └─────────────────┘
-```
+        uc1 --> apply1["Apply Model"]
+        uc2 --> apply2["Apply Model"]
+        uc3 --> apply3["Apply Model"]
 
-### Phase 2b: Single Asset Flow (Simple)
+        ar --> report1["Report"]
+        as --> report1
+        ac --> report1
+        apply1 --> report1
+        apply2 --> report1
+        apply3 --> report1
+    end
 
-When complexity-detector returns `COMPLEXITY: simple`:
+    subgraph complex_path["Phase 2a: Decomposition Flow"]
+        direction TB
+        decompose["asset-decomposer"]
+        decompose -->|"x N assets"| authors["author-agent / author-skill\nauthor-rule / author-command"]
+        decompose -->|"if needed"| orch["author-orchestrator"]
 
-```
-  SIMPLE
-     │
-     ▼
-  ┌─────────────────┐
-  │ Determine Type  │
-  │  & Weight Class │
-  └────────┬────────┘
-           │
-     ┌─────┴─────┬─────────┬─────────┬─────────┐
-     │           │         │         │         │
-   rule       agent     skill    command   heavy
-     │           │         │         │      agent/cmd
-     ▼           ▼         ▼         ▼         ▼
-  ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐  ┌──────────┐
-  │author│  │author│  │author│  │author│  │author-   │
-  │-rule │  │-agent│  │-skill│  │-cmd  │  │orchestr- │
-  └──┬───┘  └──┬───┘  └──┬───┘  └──┬───┘  │ator/     │
-     │         │         │         │      │heavyweight│
-     │         ▼         │         │      └────┬─────┘
-     │    ┌──────────┐   │         │           │
-     │    │  model-  │   │         │           │
-     │    │ selector │   │         │           ▼
-     │    └────┬─────┘   │         │      ┌──────────┐
-     │         │         │         │      │  model-  │
-     │         ▼         │         │      │ selector │
-     │    ┌──────────┐   │         │      └────┬─────┘
-     │    │  User    │   │         │           │
-     │    │ Confirm  │   │         │           ▼
-     │    └────┬─────┘   │         │      ┌──────────┐
-     │         │         │         │      │  User    │
-     │         ▼         │         │      │ Confirm  │
-     │    ┌──────────┐   │         │      └────┬─────┘
-     │    │  Apply   │   │         │           │
-     │    │  Model   │   │         │           ▼
-     │    └────┬─────┘   │         │      ┌──────────┐
-     │         │         │         │      │  Apply   │
-     │         │         │         │      │  Model   │
-     └────┬────┴────┬────┴────┬────┴──────┴────┬─────┘
-          │                                    │
-          ▼                                    │
-     ┌──────────┐                              │
-     │  Report  │◀─────────────────────────────┘
-     └──────────┘
+        authors --> ms4["model-selector (x N)"]
+        orch --> ms5["model-selector"]
+
+        ms4 --> confirm["User Confirm\n(all models at once)"]
+        ms5 --> confirm
+
+        confirm --> report2["Report\n(all assets)"]
+    end
 ```
 
 ---
@@ -175,63 +109,63 @@ When complexity-detector returns `COMPLEXITY: simple`:
 
 ### Asset Type Detection
 
-| Content Characteristic | Target Type |
-|---|---|
-| Language/framework-specific (Go, Python, React, etc.) | skill |
-| Workflow sequence ("do X, then Y, then Z") | command |
-| Focused expertise for dispatch | agent |
-| Truly universal behavior (every session, every project) | rule |
+```mermaid
+flowchart LR
+    content["Input Content"]
+    content -->|"Language/framework-specific\n(Go, Python, React, etc.)"| skill["skill"]
+    content -->|"Workflow sequence\n(do X, then Y, then Z)"| command["command"]
+    content -->|"Focused expertise\nfor dispatch"| agent["agent"]
+    content -->|"Universal behavior\n(every session, every project)"| rule["rule"]
+```
 
 ### Weight Class Detection
 
-**Heavyweight Indicators:**
-- Contains "Task tool" or "dispatch" or "subagent"
-- Orchestrates multiple phases
-- Description includes "coordinates" or "orchestrates"
+```mermaid
+flowchart TD
+    input["Typed Asset"]
 
-**Routing Matrix:**
+    input --> hw_check{"Heavyweight indicators?\n- Contains 'Task tool' / 'dispatch' / 'subagent'\n- Orchestrates multiple phases\n- 'coordinates' or 'orchestrates'"}
 
-| Type + Weight | Authoring Agent |
-|---|---|
-| rule | author-rule |
-| skill | author-skill |
-| command + lightweight | author-command |
-| command + heavyweight | author-orchestrator |
-| agent + lightweight | author-agent |
-| agent + heavyweight | author-heavyweight-agent |
+    hw_check -->|Yes| heavy["Heavyweight"]
+    hw_check -->|No| light["Lightweight"]
+
+    heavy -->|agent| aheavy["author-heavyweight-agent"]
+    heavy -->|command| aorch["author-orchestrator"]
+    light -->|rule| arule["author-rule"]
+    light -->|skill| askill["author-skill"]
+    light -->|command| acmd["author-command"]
+    light -->|agent| aagent["author-agent"]
+```
 
 ### Complexity Detection
 
-**Complex Indicators (triggers decomposition):**
-- Line count >200
-- Multiple distinct domains/responsibilities
-- "first X, then Y, finally Z" phase patterns
-- Multiple unrelated outputs
-- Conditional workflow branches
+```mermaid
+flowchart TD
+    input["Input Content"]
+    input --> analysis{"Analyze Content"}
 
-**Simple Indicators (single asset):**
-- Line count <150
-- Focused scope
-- Single domain
-- Linear, non-separable flow
+    analysis -->|"Line count > 200\nMultiple domains\nPhase patterns\nMultiple outputs\nConditional branches"| complex["COMPLEX\n-> asset-decomposer"]
+
+    analysis -->|"Line count < 150\nFocused scope\nSingle domain\nLinear flow"| simple["SIMPLE\n-> single authoring agent"]
+```
 
 ---
 
 ## Model Selection Logic
 
-The model-selector agent analyzes written agent files:
+The `model-selector` agent analyzes written agent files and recommends a model:
 
-| Signal | Recommended Model |
-|---|---|
-| Tools include Task (dispatches subagents) | opus |
-| Multi-phase coordination, complex reasoning | opus |
-| Security analysis, architecture review | opus |
-| Standard code implementation, review | sonnet |
-| Tools include Write, Edit, Bash | sonnet |
-| Procedure has 5-10 steps | sonnet |
-| Simple data collection, formatting | haiku |
-| Tools are read-only (Read, Glob, Grep) | haiku |
-| Procedure has <5 steps | haiku |
+```mermaid
+flowchart TD
+    agent_file["Agent File"]
+    agent_file --> analyze{"Analyze Signals"}
+
+    analyze -->|"Tools include Task\nMulti-phase coordination\nComplex reasoning\nSecurity/architecture review"| opus["opus"]
+
+    analyze -->|"Tools include Write, Edit, Bash\nStandard code implementation\n5-10 step procedures"| sonnet["sonnet"]
+
+    analyze -->|"Read-only tools (Read, Glob, Grep)\nSimple data collection/formatting\n< 5 step procedures"| haiku["haiku"]
+```
 
 ---
 
@@ -239,7 +173,7 @@ The model-selector agent analyzes written agent files:
 
 | Asset Type | Target Lines |
 |---|---|
-| Rules | <50 |
+| Rules | < 50 |
 | Lightweight agents | ~80 |
 | Heavyweight agents | 100-150 |
 | Skills | ~100 (main SKILL.md) |
@@ -250,19 +184,15 @@ The model-selector agent analyzes written agent files:
 
 ## User Interaction Points
 
-The system prompts users at these decision points:
-
-1. **Model Selection Confirmation**
-   - After model-selector recommends a model
-   - User can accept or choose alternative (haiku/sonnet/opus)
-
-2. **Decomposition Model Confirmation**
-   - After decomposer creates multiple agents
-   - User confirms all model selections at once
-
-3. **Registration Prompts** (in authoring agents)
-   - "Should this be registered in any orchestrators?"
-   - "Should this be referenced in CLAUDE.md?"
+```mermaid
+flowchart LR
+    subgraph Confirmation Points
+        direction TB
+        p1["1. Model Selection\nmodel-selector recommends\n-> user accepts or overrides"]
+        p2["2. Decomposition Models\nall model selections at once\n-> user confirms batch"]
+        p3["3. Registration Prompts\nRegister in orchestrators?\nReference in CLAUDE.md?"]
+    end
+```
 
 ---
 
