@@ -98,7 +98,7 @@ flowchart TD
     b2 -->|"complex items"| decomp --> sd
     b2 -->|"simple items"| sd
     sd --> b3 --> scope_prompt --> b4 --> author --> b5 --> runtime
-    runtime -->|"yes/maybe"| create_orch --> ms
+    runtime -->|"yes"| create_orch --> ms
     runtime -->|"no"| ms
     ms --> model_prompt --> b6 --> claude_md --> b7 --> report
 ```
@@ -283,8 +283,8 @@ flowchart LR
         p0["1. Scope Decision\nProject content detected\n-> user confirms: include, skip, or make personal"]
         p1["2. Model Selection\nmodel-selector recommends\n-> user accepts or overrides"]
         p2["3. Decomposition Models\nall model selections at once\n-> user confirms batch"]
-        p3["4. Execution Order\nProposed runtime order\n-> user confirms or adjusts"]
-        p4["5. Runtime Orchestrator\nBatch items form a workflow\n-> user confirms orchestrator creation"]
+        p3["4. Execution Order\nRecommended runtime order\n-> user confirms or corrects"]
+        p4["5. Runtime Orchestrator\nBatch items form a workflow\n-> user confirms or corrects order"]
         p5["6. Registration Prompts\nRegister in orchestrators?\nReference in CLAUDE.md?"]
     end
 ```
