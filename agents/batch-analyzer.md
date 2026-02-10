@@ -85,12 +85,11 @@ Separately from authoring order, assess whether the batch items form a **runtime
 | Item C consolidates or reports on A and B | C runs after both at runtime |
 | Items are all independent tools with no data flow | No runtime coordination needed |
 
-**Decision:**
+**Decision — commit to a recommendation:**
 - If any items have runtime data flow dependencies → `RUNTIME_COORDINATION: yes`
 - If all items are independent (no shared data flow) → `RUNTIME_COORDINATION: no`
-- If unclear → `RUNTIME_COORDINATION: maybe` (user decides)
 
-If yes or maybe, produce a proposed runtime execution order:
+If yes, produce a proposed runtime execution order:
 ```
 Phase 1 (parallel): [items that can run together at runtime]
 Phase 2: [items that need phase 1 output]
@@ -116,12 +115,12 @@ AUTHORING_PLAN:
 Phase 1 (parallel): [item1], [item2], [item3]
 Phase 2 (parallel): [item4] (depends on item1)
 
-RUNTIME_COORDINATION: [yes|no|maybe]
+RUNTIME_COORDINATION: [yes|no]
 RUNTIME_RATIONALE: [one sentence explaining why]
-RUNTIME_ORDER: (only if yes or maybe)
+RUNTIME_ORDER: (only if yes)
   Phase 1 (parallel): [item1], [item2]
   Phase 2: [item3] (needs output from phase 1)
-SUGGESTED_ORCHESTRATOR: [name] (only if yes or maybe)
+SUGGESTED_ORCHESTRATOR: [name] (only if yes)
 
 WORK_ITEMS: [count after merges]
 MERGED_CONTENT:

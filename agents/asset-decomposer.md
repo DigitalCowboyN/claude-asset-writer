@@ -166,10 +166,10 @@ Conditional: [agent4] (only if agent1 finds issues)
 
 Prompt with AskUserQuestion:
 - Header: "Execution order"
-- Question: "Proposed runtime execution order for the orchestrator:\n[execution order]\nDoes this look right?"
-- Options: "Accept" (Recommended) | "Make all sequential" | "Adjust"
+- Question: "Recommended runtime execution order for the orchestrator:\n[execution order]\nConfirm, or describe the correct order."
+- Options: "Confirm" (Recommended) | "Skip orchestrator"
 
-If "Adjust": ask user to describe the correct order.
+If user selects "Other": they provide the correct execution order. Use their correction.
 
 ### Step 6: Create Orchestrator (If Needed)
 

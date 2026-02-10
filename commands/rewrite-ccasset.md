@@ -131,14 +131,14 @@ Check the batch-analyzer's `RUNTIME_COORDINATION` result from Step 1b.
 
 **If `RUNTIME_COORDINATION: no`** → skip to Step 1h.
 
-**If `RUNTIME_COORDINATION: yes` or `maybe`** → prompt with AskUserQuestion:
+**If `RUNTIME_COORDINATION: yes`** → prompt with AskUserQuestion:
 - Header: "Coordination"
-- Question: "These items appear to form a runtime workflow:\n[RUNTIME_ORDER from batch-analyzer]\nCreate an orchestrator to coordinate them?"
-- Options: "Yes, create orchestrator" (Recommended if `yes`) | "No, keep independent" | "Adjust order"
+- Question: "These items form a runtime workflow. Recommended orchestrator with this execution order:\n[RUNTIME_ORDER from batch-analyzer]\nConfirm, or describe the correct order."
+- Options: "Create orchestrator" (Recommended) | "Skip, keep independent"
 
-If "Adjust order": ask user to describe the correct order.
+If user selects "Other": they provide the correct execution order. Use their correction.
 
-If user agrees, dispatch to `author-orchestrator`:
+If user confirms or corrects, dispatch to `author-orchestrator`:
 ```
 Create an orchestrator command that coordinates these agents:
 
