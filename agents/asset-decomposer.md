@@ -143,6 +143,34 @@ Accept all, or specify adjustments?
 
 Apply confirmed models to each agent file.
 
+### Step 5b: Analyze Execution Order (If Orchestrator Needed)
+
+If `NEEDS_ORCHESTRATOR: yes` in the plan, analyze data flow between the created components to determine runtime execution order.
+
+**For each pair of components, check:**
+
+| Signal | Meaning |
+|---|---|
+| B's purpose references A's output | A before B (dependency) |
+| A and B both analyze the same input independently | A and B in parallel |
+| C consolidates or reports on A and B | C after both (A and B parallel, then C) |
+| D only runs if A finds something specific | D conditional on A |
+
+**Produce a phased execution order:**
+```
+EXECUTION_ORDER:
+Phase 1 (parallel): [agent1], [agent2]
+Phase 2: [agent3] (needs output from phase 1)
+Conditional: [agent4] (only if agent1 finds issues)
+```
+
+Prompt with AskUserQuestion:
+- Header: "Execution order"
+- Question: "Proposed runtime execution order for the orchestrator:\n[execution order]\nDoes this look right?"
+- Options: "Accept" (Recommended) | "Make all sequential" | "Adjust"
+
+If "Adjust": ask user to describe the correct order.
+
 ### Step 6: Create Orchestrator (If Needed)
 
 If `NEEDS_ORCHESTRATOR: yes` in the plan:
@@ -152,8 +180,10 @@ Dispatch to `author-orchestrator`:
 Create an orchestrator command that coordinates these agents:
 
 Agents: [list of created agent names and purposes]
-Relationship: [sequential|parallel|conditional]
-Flow: [description from plan]
+
+<execution_order>
+[confirmed phased execution order from Step 5b]
+</execution_order>
 
 Orchestrator name: [suggested name from plan]
 ```
@@ -188,8 +218,10 @@ Orchestrator name: [suggested name from plan]
 
 ### Coordination (if applicable)
 
-**Relationship:** [sequential|parallel|conditional]
 **Orchestrator:** /[name]
+**Execution order:**
+- Phase 1 (parallel): [agent1], [agent2]
+- Phase 2: [agent3] (needs phase 1 output)
 ```
 
 ## Output Format

@@ -74,11 +74,18 @@ If rewriting existing content:
 - Identify phases and data flow between them
 
 If creating from scratch:
-- Clarify what agents will be orchestrated
-- Determine the phase sequence
+- Parse the agent list and execution order
+- If `<execution_order>` provided: use it to determine phase structure
+- If only a relationship label provided: analyze agent purposes to determine order
 
 ### Step 2: Design Dispatch Flow
-Map out:
+
+If structured `<execution_order>` was provided, use it directly to design phases:
+- Parallel phases → dispatch all agents in that phase in a single message
+- Sequential phases → dispatch one at a time, pass output to next
+- Conditional items → wrap in decision logic based on prior phase output
+
+If no execution order provided, map out:
 1. What input is needed
 2. Which agent handles phase 1
 3. What output phase 1 produces

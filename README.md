@@ -212,5 +212,6 @@ Personal Assets (written to ~/.claude/):
 1. **Minimal Dispatch Prompts** — Subagents know their job; orchestrators pass content + goal only
 2. **Progressive Complexity** — Simple inputs get simple handling; complexity triggers decomposition
 3. **Scope Awareness** — Personal style goes to `~/.claude/`; project config goes to project directories
-4. **User Control** — Scope decisions, model selection, and registration are confirmed, not automatic
+4. **User Control** — Scope decisions, model selection, execution order, and coordination are confirmed, not automatic
 5. **Focused Assets** — Each asset does one thing well; complex tasks become multiple assets
+6. **Execution Order Analysis** — Data flow between components determines parallel vs sequential; user confirms before orchestrator is authored

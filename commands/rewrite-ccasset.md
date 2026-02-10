@@ -40,7 +40,7 @@ If **single** → go to Step 2 (Single-Item Flow).
 
 ---
 
-## Batch Flow (Steps 1a–1h)
+## Batch Flow (Steps 1a–1i)
 
 ### Step 1a: Parse Batch Inputs
 
@@ -125,9 +125,37 @@ Dispatch all items in that phase in parallel to their appropriate authoring agen
 
 **BARRIER B5:** All phases complete, all authoring done.
 
-### Step 1g: Batch Model Selection — BARRIER B6
+### Step 1g: Runtime Orchestrator (If Recommended)
 
-Collect all agent/orchestrator files created. Dispatch `model-selector` for each in parallel.
+Check the batch-analyzer's `RUNTIME_COORDINATION` result from Step 1b.
+
+**If `RUNTIME_COORDINATION: no`** → skip to Step 1h.
+
+**If `RUNTIME_COORDINATION: yes` or `maybe`** → prompt with AskUserQuestion:
+- Header: "Coordination"
+- Question: "These items appear to form a runtime workflow:\n[RUNTIME_ORDER from batch-analyzer]\nCreate an orchestrator to coordinate them?"
+- Options: "Yes, create orchestrator" (Recommended if `yes`) | "No, keep independent" | "Adjust order"
+
+If "Adjust order": ask user to describe the correct order.
+
+If user agrees, dispatch to `author-orchestrator`:
+```
+Create an orchestrator command that coordinates these agents:
+
+Agents: [list of created agent names and purposes]
+
+<execution_order>
+[confirmed runtime order]
+</execution_order>
+
+Orchestrator name: [SUGGESTED_ORCHESTRATOR from batch-analyzer]
+```
+
+Wait for author-orchestrator to return. The new orchestrator is now included in model selection.
+
+### Step 1h: Batch Model Selection — BARRIER B6
+
+Collect all agent/orchestrator files created (including runtime orchestrator from Step 1g if applicable). Dispatch `model-selector` for each in parallel.
 
 **BARRIER B6:** Wait for all model selections to return.
 
@@ -138,7 +166,7 @@ Present all at once with AskUserQuestion:
 
 Apply confirmed models to each agent file.
 
-### Step 1h: Serialized CLAUDE.md Writes + Report — BARRIER B7
+### Step 1i: Serialized CLAUDE.md Writes + Report — BARRIER B7
 
 **CLAUDE.md writes are serialized** (one at a time to prevent corruption):
 
@@ -173,6 +201,10 @@ For each project-scoped rule/skill section:
 | Item | Reason |
 |---|---|
 | ... | ... |
+
+### Runtime Orchestrator (if created)
+**File:** [path]
+**Coordinates:** [agent1] → [agent2] → ...
 
 ### Errors (if any)
 | Item | Error | Status |
@@ -374,15 +406,23 @@ Edit the agent file's frontmatter to set the confirmed model.
 → Creates ~/.claude/skills/functional-style/SKILL.md
 ```
 
-**Batch of related files:**
+**Batch of related skills (no runtime coordination):**
 ```
 /rewrite-ccasset skill1.md skill2.md skill3.md skill4.md skill5.md
-→ Batch detected (5 files) → Steps 1a-1h
-→ batch-analyzer: 2 overlap → merge → 4 work items
+→ Batch detected (5 files) → Steps 1a-1i
+→ batch-analyzer: 2 overlap → merge → 4 work items, no runtime coordination
 → Parallel complexity → all simple
 → Parallel scope → 3 personal, 1 project
 → User confirms project item
 → Parallel authoring → model selection → report
+```
+
+**Batch of agents forming a pipeline (runtime coordination):**
+```
+/rewrite-ccasset scanner.md reporter.md fixer.md
+→ Batch detected (3 files) → Steps 1a-1i
+→ batch-analyzer: pipeline detected, runtime coordination recommended
+→ Parallel authoring → runtime orchestrator created → model selection → report
 ```
 
 **Mixed (Cursor rules):**

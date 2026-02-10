@@ -83,18 +83,24 @@ flowchart TD
     author["Step 1f: Phased Authoring\n(parallel per phase, sequential between phases)"]
     b5[/"BARRIER B5"/]
 
-    ms["Step 1g: model-selector\n(x N in parallel)"]
+    runtime{"Step 1g: Runtime Orchestrator?\n(batch-analyzer recommended?)"}
+    create_orch["author-orchestrator\n(if user confirms)"]
+
+    ms["Step 1h: model-selector\n(x N in parallel)"]
     model_prompt["User Confirms Models"]
     b6[/"BARRIER B6"/]
 
-    claude_md["Step 1h: CLAUDE.md Writes\n(serialized, one at a time)"]
+    claude_md["Step 1i: CLAUDE.md Writes\n(serialized, one at a time)"]
     b7[/"BARRIER B7"/]
     report["Final Report"]
 
     parse --> ba --> b1 --> cd --> b2
     b2 -->|"complex items"| decomp --> sd
     b2 -->|"simple items"| sd
-    sd --> b3 --> scope_prompt --> b4 --> author --> b5 --> ms --> model_prompt --> b6 --> claude_md --> b7 --> report
+    sd --> b3 --> scope_prompt --> b4 --> author --> b5 --> runtime
+    runtime -->|"yes/maybe"| create_orch --> ms
+    runtime -->|"no"| ms
+    ms --> model_prompt --> b6 --> claude_md --> b7 --> report
 ```
 
 ### Single-Item Full Pipeline
@@ -277,7 +283,9 @@ flowchart LR
         p0["1. Scope Decision\nProject content detected\n-> user confirms: include, skip, or make personal"]
         p1["2. Model Selection\nmodel-selector recommends\n-> user accepts or overrides"]
         p2["3. Decomposition Models\nall model selections at once\n-> user confirms batch"]
-        p3["4. Registration Prompts\nRegister in orchestrators?\nReference in CLAUDE.md?"]
+        p3["4. Execution Order\nProposed runtime order\n-> user confirms or adjusts"]
+        p4["5. Runtime Orchestrator\nBatch items form a workflow\n-> user confirms orchestrator creation"]
+        p5["6. Registration Prompts\nRegister in orchestrators?\nReference in CLAUDE.md?"]
     end
 ```
 
@@ -293,11 +301,11 @@ The batch flow uses 7 explicit barriers to ensure correct execution order:
 
 | Barrier | After | Before | Purpose |
 |---|---|---|---|
-| B1 | Batch analysis | Complexity detection | Need merge/phase plan first |
+| B1 | Batch analysis | Complexity detection | Need merge/phase plan and runtime coordination assessment |
 | B2 | All complexity detections | Scope detection | Need to know which items expand |
 | B3 | All scope detections | User scope prompts | Need all scopes to batch prompts |
 | B4 | User scope decisions | Authoring | Need to know what to write and where |
-| B5 | All authoring (all phases) | Model selection | Need written files to analyze |
+| B5 | All authoring (all phases) | Runtime orchestrator | Need written files before coordinating them |
 | B6 | All model selections | CLAUDE.md writes | Need user model confirmation first |
 | B7 | All CLAUDE.md writes | Final report | Everything must be written |
 
@@ -312,6 +320,40 @@ Multiple project-scoped writes to the same CLAUDE.md file are always serialized 
 ### Error Handling
 
 When a parallel dispatch fails: retry once. If retry fails: mark as failed, continue with remaining items. One failed item never blocks the batch. All failures are reported in the final report.
+
+---
+
+## Execution Order Analysis
+
+### Where It Happens
+
+Execution order analysis occurs in two places:
+
+| Context | Agent | When | Purpose |
+|---|---|---|---|
+| Decomposition | `asset-decomposer` (Step 5b) | After agents created, before orchestrator authored | Determine runtime order for the orchestrator's dispatch flow |
+| Batch processing | `batch-analyzer` (Step 5) | During initial batch analysis | Detect if batch items form a runtime workflow needing coordination |
+
+### Data Flow Signals
+
+| Signal | Meaning |
+|---|---|
+| B's purpose references A's output | A before B (sequential dependency) |
+| A and B both analyze the same input independently | A and B can run in parallel |
+| C consolidates or reports on A and B | C runs after both (fan-in) |
+| D only runs if A finds something specific | D conditional on A |
+
+### Output
+
+Both contexts produce a phased execution order:
+
+```
+Phase 1 (parallel): [agent1], [agent2]
+Phase 2: [agent3] (needs output from phase 1)
+Conditional: [agent4] (only if agent1 finds issues)
+```
+
+This order is confirmed by the user before being passed to `author-orchestrator`.
 
 ---
 

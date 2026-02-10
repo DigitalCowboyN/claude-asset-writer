@@ -22,7 +22,8 @@ Analyze a set of inputs together to detect cross-input relationships, identify m
 1. Reads all inputs
 2. Detects relationships between them
 3. Identifies merge candidates
-4. Produces a dependency-ordered execution plan
+4. Produces a dependency-ordered authoring plan
+5. Assesses whether items need runtime coordination (orchestrator)
 
 ## Procedure
 
@@ -62,16 +63,40 @@ For overlapping inputs:
 - Use the more complete one as base, incorporate unique content from the other
 - Produce merged content with a descriptive name
 
-### Step 4: Build Execution Plan
+### Step 4: Build Authoring Execution Plan
 
-Group work items into phases:
+Group work items into phases for **authoring order** (what gets created first):
 - **Phase 1:** Items with no dependencies (can all run in parallel)
 - **Phase 2:** Items that depend on Phase 1 outputs
 - **Phase N:** Continue until all items placed
 
 Within each phase, all items can run in parallel.
 
-### Step 5: Return Analysis
+### Step 5: Assess Runtime Coordination
+
+Separately from authoring order, assess whether the batch items form a **runtime workflow** — meaning they should be coordinated by an orchestrator when actually used.
+
+**Runtime coordination signals:**
+
+| Signal | Meaning |
+|---|---|
+| Item B consumes output that item A produces | Runtime dependency (A → B) |
+| Items A and B analyze the same input independently | Runtime parallel candidates |
+| Item C consolidates or reports on A and B | C runs after both at runtime |
+| Items are all independent tools with no data flow | No runtime coordination needed |
+
+**Decision:**
+- If any items have runtime data flow dependencies → `RUNTIME_COORDINATION: yes`
+- If all items are independent (no shared data flow) → `RUNTIME_COORDINATION: no`
+- If unclear → `RUNTIME_COORDINATION: maybe` (user decides)
+
+If yes or maybe, produce a proposed runtime execution order:
+```
+Phase 1 (parallel): [items that can run together at runtime]
+Phase 2: [items that need phase 1 output]
+```
+
+### Step 6: Return Analysis
 
 ```
 BATCH_ANALYSIS:
@@ -87,9 +112,16 @@ MERGE_ACTIONS:
   Added from other: [what was incorporated]
 - (none) if no merges needed
 
-EXECUTION_PLAN:
+AUTHORING_PLAN:
 Phase 1 (parallel): [item1], [item2], [item3]
 Phase 2 (parallel): [item4] (depends on item1)
+
+RUNTIME_COORDINATION: [yes|no|maybe]
+RUNTIME_RATIONALE: [one sentence explaining why]
+RUNTIME_ORDER: (only if yes or maybe)
+  Phase 1 (parallel): [item1], [item2]
+  Phase 2: [item3] (needs output from phase 1)
+SUGGESTED_ORCHESTRATOR: [name] (only if yes or maybe)
 
 WORK_ITEMS: [count after merges]
 MERGED_CONTENT:
@@ -100,7 +132,7 @@ MERGED_CONTENT:
 
 ## Examples
 
-**5 Python skills, two overlapping:**
+**5 Python skills, two overlapping (no runtime coordination):**
 ```
 BATCH_ANALYSIS:
 
@@ -114,14 +146,46 @@ RELATIONSHIPS:
 MERGE_ACTIONS:
 - Merge python-typing + python-type-hints → "python-type-system"
 
-EXECUTION_PLAN:
+AUTHORING_PLAN:
 Phase 1 (parallel): python-type-system, python-async, python-dataclasses, python-testing
 Phase 2 (parallel): python-mocking (depends on python-testing)
+
+RUNTIME_COORDINATION: no
+RUNTIME_RATIONALE: All skills activate independently by context; no data flow between them.
 
 WORK_ITEMS: 4
 ```
 
-**Agent + its orchestrator:**
+**3 agents forming a review pipeline (runtime coordination needed):**
+```
+BATCH_ANALYSIS:
+
+INPUTS: 3
+
+RELATIONSHIPS:
+- security-scanner → vulnerability-reporter: dependency (reporter needs scanner output)
+- vulnerability-reporter → fix-suggester: dependency (suggester needs reporter output)
+
+MERGE_ACTIONS:
+- (none)
+
+AUTHORING_PLAN:
+Phase 1: security-scanner
+Phase 2: vulnerability-reporter (depends on security-scanner)
+Phase 3: fix-suggester (depends on vulnerability-reporter)
+
+RUNTIME_COORDINATION: yes
+RUNTIME_RATIONALE: Items form a pipeline where each consumes the previous item's output.
+RUNTIME_ORDER:
+  Phase 1: security-scanner
+  Phase 2: vulnerability-reporter (needs scanner findings)
+  Phase 3: fix-suggester (needs reporter output)
+SUGGESTED_ORCHESTRATOR: security-review-pipeline
+
+WORK_ITEMS: 3
+```
+
+**Agent + its orchestrator (authoring dependency only):**
 ```
 BATCH_ANALYSIS:
 
@@ -133,9 +197,12 @@ RELATIONSHIPS:
 MERGE_ACTIONS:
 - (none)
 
-EXECUTION_PLAN:
+AUTHORING_PLAN:
 Phase 1: security-scanner
 Phase 2: security-audit-command (depends on security-scanner)
+
+RUNTIME_COORDINATION: no
+RUNTIME_RATIONALE: Orchestrator already exists in batch; no additional coordination needed.
 
 WORK_ITEMS: 2
 ```
