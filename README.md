@@ -25,6 +25,9 @@ cp agents/*.md ~/.claude/agents/
 
 # Copy commands
 cp commands/*.md ~/.claude/commands/
+
+# Copy rules (optional — reference examples)
+cp rules/*.md ~/.claude/rules/
 ```
 
 ### Usage
@@ -156,12 +159,13 @@ Project-scoped rules and skills are appended as inline sections to `CLAUDE.md`. 
 
 ## Example: Mixed-Scope Input (Cursor Rules)
 
-Input: Cursor rules with coding style + project config
+Input: Cursor rules with coding style + project config + universal principles
 
 Output:
 ```
 Personal Assets (written to ~/.claude/):
-  ~/.claude/skills/coding-style/SKILL.md
+  ~/.claude/rules/coding-principles.md (KISS, DRY, YAGNI, SOLID)
+  ~/.claude/skills/coding-style/SKILL.md (PEP 8, type hints, docstrings)
   ~/.claude/skills/naming-conventions/SKILL.md
 
 Project Assets (appended to CLAUDE.md):
@@ -169,6 +173,8 @@ Project Assets (appended to CLAUDE.md):
   ## Database Tooling (Alembic, SQLAlchemy)
   ## Deployment (Docker, Redis)
 ```
+
+Universal principles become rules (apply every session). Language-specific practices become skills (activate by context).
 
 ## Example: Complex Input Decomposition
 

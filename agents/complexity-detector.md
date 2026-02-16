@@ -23,6 +23,9 @@ Analyze input content and determine if it should be a single asset or decomposed
 
 - **Line count:** >200 lines of instructions
 - **Multiple domains:** Covers unrelated responsibilities (e.g., security AND performance AND documentation)
+- **Topic diversity:** Covers multiple separable topics even within one language (e.g., database + API + infrastructure + testing + style are distinct topics even if all Python)
+- **Mixed scope signals:** Contains both universal principles (KISS, DRY, SOLID) and language/tool-specific practices (SQLAlchemy, Docker) — indicates content should split into rules and skills
+- **High item count:** >10 distinct directives or rules, even if each is short
 - **Phase language:** "first do X, then do Y, finally do Z" with distinct phases
 - **AND patterns:** "handles A and also B and also C" where A/B/C are separable
 - **Multiple outputs:** Produces different types of artifacts
@@ -32,7 +35,7 @@ Analyze input content and determine if it should be a single asset or decomposed
 
 - **Focused scope:** One clear responsibility
 - **<150 lines:** Concise instructions
-- **Single domain:** All content relates to one topic
+- **Single topic:** All content relates to one topic (not just one language)
 - **Linear flow:** Steps build on each other, not separable
 
 ## Procedure
@@ -99,6 +102,26 @@ RELATIONSHIPS:
 
 NEEDS_ORCHESTRATOR: yes
 - code-auditor: Orchestrator that coordinates the three review phases
+```
+
+**Complex input:** 37 directives all for Python, but covering 6+ separable topics
+```
+COMPLEXITY: complex
+RATIONALE: 37 directives spanning testing, tooling, database, API design, infrastructure, and coding style — distinct topics despite being one language. Also mixes universal principles (KISS, DRY, SOLID) with Python-specific practices.
+
+COMPONENTS:
+1. coding-principles: rule - Universal principles (KISS, DRY, YAGNI, SOLID)
+2. python-coding-style: skill - PEP 8, type hints, docstrings, immutability
+3. python-testing: skill - TDD with pytest, fixtures, test data
+4. python-tooling: skill - black, flake8, requirements.txt, Makefile
+5. database-config: skill - SQLAlchemy, JSONB, parameterized queries
+6. api-design: skill - RESTful endpoints, Pydantic, versioning, auth
+
+RELATIONSHIPS:
+- parallel
+- All apply independently based on context
+
+NEEDS_ORCHESTRATOR: no
 ```
 
 **Complex input:** Rule with language-specific content

@@ -187,6 +187,22 @@ flowchart LR
     content -->|"Universal behavior\n(every session, every project)"| rule["rule"]
 ```
 
+### Type Validation (Decomposer)
+
+When the `asset-decomposer` processes complex input, it validates the complexity-detector's type suggestions:
+
+```mermaid
+flowchart TD
+    component["Component from Plan"]
+    component --> check{"Applies regardless\nof language?"}
+
+    check -->|"Yes: KISS, DRY, SOLID,\nmodularity, efficiency"| rule["rule"]
+    check -->|"No: PEP 8, pytest,\nSQLAlchemy, Docker"| skill["skill"]
+    check -->|"Mixed: universal +\nlanguage-specific"| split["Split into\nrule + skill"]
+```
+
+This prevents misclassification where universal principles (KISS, DRY, YAGNI, SOLID) get typed as language-specific skills just because the input is in a single-language context.
+
 ### Weight Class Detection
 
 ```mermaid
@@ -236,9 +252,9 @@ flowchart TD
     input["Input Content"]
     input --> analysis{"Analyze Content"}
 
-    analysis -->|"Line count > 200\nMultiple domains\nPhase patterns\nMultiple outputs\nConditional branches"| complex["COMPLEX\n-> asset-decomposer"]
+    analysis -->|"Line count > 200\nMultiple domains\nTopic diversity (6+ topics, even one language)\nMixed scope (universal + language-specific)\nHigh item count (>10 directives)\nPhase/AND/conditional patterns"| complex["COMPLEX\n-> asset-decomposer"]
 
-    analysis -->|"Line count < 150\nFocused scope\nSingle domain\nLinear flow"| simple["SIMPLE\n-> single authoring agent"]
+    analysis -->|"Line count < 150\nFocused scope\nSingle topic\nLinear flow"| simple["SIMPLE\n-> single authoring agent"]
 ```
 
 ---

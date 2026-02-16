@@ -32,6 +32,24 @@ Extract from the plan:
 - Relationships (sequential/parallel/conditional)
 - Whether orchestrator is needed
 
+### Step 1b: Validate Component Types
+
+The complexity-detector's type suggestions are initial estimates. Validate each component's type:
+
+**Rule indicators** (universal, every session):
+- Applies regardless of language (KISS, DRY, YAGNI, SOLID, modularity)
+- No language-specific syntax, tools, or frameworks mentioned
+- Would apply to Go, Rust, Python, JavaScript equally
+
+**Skill indicators** (language/framework-specific):
+- References specific syntax, idioms, or conventions (PEP 8, `with` statements)
+- Names specific tools or libraries (pytest, SQLAlchemy, black, flake8)
+- Only meaningful in a particular language or ecosystem
+
+If a component mixes both universal principles AND language-specific practices, split it: universal principles → rule, language-specific practices → skill.
+
+Override the plan's suggested type when the content doesn't match. A component named "coding-style" containing only KISS/DRY/SOLID should become a rule, not a skill.
+
 ### Step 2: Extract Content for Each Component
 
 For each component in the plan:
