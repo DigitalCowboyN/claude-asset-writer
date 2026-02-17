@@ -152,10 +152,10 @@ See `docs/architecture.md` for detailed system architecture and data flow diagra
 | Scope | Destination | User Prompt? |
 |---|---|---|
 | **Personal** | `~/.claude/` | No |
-| **Project** | `<project>/CLAUDE.md` or `<project>/.claude/` | Yes |
+| **Project** | `<project>/.claude/` | Yes |
 | **Ambiguous** | User decides | Yes |
 
-Project-scoped rules and skills are appended as inline sections to `CLAUDE.md`. Project-scoped agents and commands are written as files to the project's `.claude/` directory.
+All project-scoped assets are created as actual files in `<project>/.claude/`. Rules and skills also get a brief reference in `CLAUDE.md` for discoverability.
 
 ## Example: Mixed-Scope Input (Cursor Rules)
 
@@ -168,10 +168,12 @@ Personal Assets (written to ~/.claude/):
   ~/.claude/skills/coding-style/SKILL.md (PEP 8, type hints, docstrings)
   ~/.claude/skills/naming-conventions/SKILL.md
 
-Project Assets (appended to CLAUDE.md):
-  ## Project Structure (directory layout)
-  ## Database Tooling (Alembic, SQLAlchemy)
-  ## Deployment (Docker, Redis)
+Project Assets (written to <project>/.claude/):
+  .claude/rules/project-structure.md (directory layout)
+  .claude/skills/database-tooling/ (Alembic, SQLAlchemy)
+  .claude/skills/deployment/ (Docker, Redis)
+
+References added to CLAUDE.md for rules and skills.
 ```
 
 Universal principles become rules (apply every session). Language-specific practices become skills (activate by context).

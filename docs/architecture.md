@@ -231,19 +231,21 @@ flowchart TD
 
     scan -->|"Coding style preferences\nNaming conventions\nLanguage idioms\nPattern preferences"| personal["SCOPE: personal\n-> ~/.claude/"]
 
-    scan -->|"Specific directories\nNamed tools/dependencies\nArchitectural decisions\nDeployment/infra specifics"| project["SCOPE: project\n-> project CLAUDE.md\n(user confirms)"]
+    scan -->|"Specific directories\nNamed tools/dependencies\nArchitectural decisions\nDeployment/infra specifics"| project["SCOPE: project\n-> project .claude/\n(user confirms)"]
 
     scan -->|"Tech-specific principles\nCould be style OR requirement\nTeam conventions"| ambiguous["SCOPE: ambiguous\n(user decides)"]
 ```
 
 #### Project Destination Routing
 
-| Asset Type | Project Destination | Format |
+| Asset Type | Project Destination | CLAUDE.md |
 |---|---|---|
-| rule | `<project>/CLAUDE.md` | Inline section |
-| skill | `<project>/CLAUDE.md` | Inline section |
-| agent | `<project>/.claude/agents/` | Separate file |
-| command | `<project>/.claude/commands/` | Separate file |
+| rule | `<project>/.claude/rules/<name>.md` | Brief reference |
+| skill | `<project>/.claude/skills/<name>/SKILL.md` | Brief reference |
+| agent | `<project>/.claude/agents/<name>.md` | — |
+| command | `<project>/.claude/commands/<name>.md` | — |
+
+All project-scoped assets are actual files. Rules and skills also get a one-line reference in `CLAUDE.md` for discoverability.
 
 ### Complexity Detection
 
@@ -323,15 +325,15 @@ The batch flow uses 7 explicit barriers to ensure correct execution order:
 | B4 | User scope decisions | Authoring | Need to know what to write and where |
 | B5 | All authoring (all phases) | Runtime orchestrator | Need written files before coordinating them |
 | B6 | All model selections | CLAUDE.md writes | Need user model confirmation first |
-| B7 | All CLAUDE.md writes | Final report | Everything must be written |
+| B7 | All CLAUDE.md references | Final report | Everything must be written |
 
 ### Parallel Execution Model
 
 The Task tool blocks until the subagent returns. "Parallel" means dispatching multiple Task calls in a single orchestrator message — Claude Code processes these concurrently. The orchestrator waits for all to return before proceeding past a barrier.
 
-### CLAUDE.md Write Serialization
+### CLAUDE.md References
 
-Multiple project-scoped writes to the same CLAUDE.md file are always serialized (one at a time) to prevent race conditions. Each write reads the current file state, checks for conflicts, and appends.
+Project-scoped rules and skills are created as actual files in `<project>/.claude/`. Brief one-line references are then added to `CLAUDE.md` for discoverability. Since references are small appends, the serialization concern is minimal.
 
 ### Error Handling
 

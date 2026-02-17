@@ -126,21 +126,28 @@ Asset name: [component name]
 Purpose: [component description from plan]
 ```
 
-For **project-scoped rules/skills**: format as CLAUDE.md section directly:
+For **project-scoped** components, dispatch to authoring agents with project destination:
 
-```markdown
-## [Component Name]
+- Rules → `author-rule` with destination `<project>/.claude/rules/<name>.md`
+- Skills → `author-skill` with destination `<project>/.claude/skills/<name>/`
+- Agents/commands → authoring agent with destination `<project>/.claude/agents/<name>.md` or `<project>/.claude/commands/<name>.md`
 
-[Requirements as concise bullet points]
-```
-
-Append to `<project>/CLAUDE.md`. Create the file if it doesn't exist.
-
-For **project-scoped agents/commands**: dispatch to authoring agent with destination:
 ```
 Create this asset from the following content:
 <content>[extracted content]</content>
-<destination>[project path]/.claude/agents/[name].md</destination>
+<destination>[project path]/.claude/[type]s/[name].md</destination>
+```
+
+**Then add references to CLAUDE.md** for project-scoped rules and skills:
+
+Check if `<project>/CLAUDE.md` exists (create with `# Project Configuration` if not). Add brief reference under appropriate section:
+
+```markdown
+## Rules
+- See `.claude/rules/<name>.md` — [one-line description]
+
+## Skills
+- See `.claude/skills/<name>/` — [one-line description]
 ```
 
 ### Step 5: Model Selection for Agents
@@ -221,12 +228,14 @@ Orchestrator name: [suggested name from plan]
 | ~/.claude/skills/coding-style/SKILL.md | skill | Functional style | — |
 | ~/.claude/agents/reviewer.md | agent | Code review | sonnet |
 
-### Project Assets (appended to CLAUDE.md)
+### Project Assets (written to <project>/.claude/)
 
-| Section | Purpose |
-|---|---|
-| ## Project Structure | Directory layout |
-| ## Database Tooling | Alembic, SQLAlchemy |
+| File | Type | Purpose | Model |
+|---|---|---|---|
+| .claude/rules/project-structure.md | rule | Directory layout | — |
+| .claude/skills/database-tooling/ | skill | Alembic, SQLAlchemy | — |
+
+**Note:** References added to CLAUDE.md for rules and skills.
 
 ### Skipped
 

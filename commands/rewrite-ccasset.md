@@ -118,7 +118,8 @@ Follow the phase ordering from batch-analyzer's execution plan. **For each phase
 
 Dispatch all items in that phase in parallel to their appropriate authoring agents:
 - Personal items → standard authoring agent dispatch
-- Project rules/skills → format as CLAUDE.md sections (hold in memory, don't write yet)
+- Project rules → `author-rule` with destination `<project>/.claude/rules/<name>.md`
+- Project skills → `author-skill` with destination `<project>/.claude/skills/<name>/`
 - Project agents/commands → authoring agent with `<destination>` parameter
 
 **Wait for all items in current phase to complete before starting next phase.**
@@ -166,16 +167,24 @@ Present all at once with AskUserQuestion:
 
 Apply confirmed models to each agent file.
 
-### Step 1i: Serialized CLAUDE.md Writes + Report — BARRIER B7
+### Step 1i: Add CLAUDE.md References + Report — BARRIER B7
 
-**CLAUDE.md writes are serialized** (one at a time to prevent corruption):
+**Add references for project-scoped rules/skills to CLAUDE.md:**
 
-For each project-scoped rule/skill section:
+For each project-scoped rule or skill created in Step 1f:
 1. Read current CLAUDE.md (create if missing with `# Project Configuration`)
-2. Check for existing section with same name → ask replace/append/skip
-3. Append the section
+2. Add brief reference under appropriate section (`## Rules` or `## Skills`), create section if missing
+3. If reference already exists for this asset, skip
 
-**BARRIER B7:** All writes complete.
+```markdown
+## Rules
+- See `.claude/rules/<name>.md` — [one-line description]
+
+## Skills
+- See `.claude/skills/<name>/` — [one-line description]
+```
+
+**BARRIER B7:** All references written.
 
 **Report:**
 
@@ -192,10 +201,14 @@ For each project-scoped rule/skill section:
 |---|---|---|---|
 | ... | ... | ... | ... |
 
-### Project Assets (written to CLAUDE.md)
-| Section | Purpose |
-|---|---|
-| ... | ... |
+### Project Assets (written to <project>/.claude/)
+| File | Type | Purpose | Model |
+|---|---|---|---|
+| .claude/rules/<name>.md | rule | ... | — |
+| .claude/skills/<name>/ | skill | ... | — |
+| .claude/agents/<name>.md | agent | ... | sonnet |
+
+**Note:** References added to CLAUDE.md for rules and skills.
 
 ### Skipped
 | Item | Reason |
@@ -286,7 +299,7 @@ Prompt with AskUserQuestion:
 
 If "Include in project":
 - Determine asset type (Step 4)
-- If rule or skill → format as CLAUDE.md section (Step 5a)
+- If rule or skill → create project file + CLAUDE.md reference (Step 5a)
 - If agent or command → dispatch to authoring agent with project destination
 
 If "Make personal": continue to Step 4 with default destination.
@@ -331,21 +344,38 @@ If scope is project but cwd is home directory, ask:
 - Skill → `author-skill`
 - Rule → `author-rule`
 
-### Step 5a: Project CLAUDE.md Formatting (Project-Scoped Rules/Skills Only)
+### Step 5a: Project-Scoped Rules/Skills
 
-If scope is project AND type is rule or skill, skip authoring agents. Format directly:
+If scope is project AND type is rule or skill:
 
-```markdown
-## [Topic Name]
+**Create the actual file** — dispatch to the appropriate authoring agent with project destination:
+- For rules: `author-rule` with destination `<project>/.claude/rules/<name>.md`
+- For skills: `author-skill` with destination `<project>/.claude/skills/<name>/`
 
-[Requirements as concise bullet points]
 ```
+Rewrite to standards:
+<content>
+[the input content]
+</content>
+<destination>[project path]/.claude/rules/<name>.md</destination>
+```
+
+**Then add a reference to CLAUDE.md:**
 
 Check if `<project>/CLAUDE.md` exists:
 - If not: create with `# Project Configuration` header
-- If section with same name exists: ask "Replace, append below, or skip?"
 
-Append the section to CLAUDE.md. Skip to Step 10 (Report).
+Add a brief reference under the appropriate section (create section if missing):
+
+```markdown
+## Rules
+- See `.claude/rules/<name>.md` — [one-line description]
+
+## Skills
+- See `.claude/skills/<name>/` — [one-line description]
+```
+
+If reference already exists for this asset, skip. Continue to Step 10 (Report).
 
 ### Step 6: Dispatch to Authoring Agent
 
@@ -386,7 +416,7 @@ Edit the agent file's frontmatter to set the confirmed model.
 ## Asset Rewritten
 
 **Source:** [file path or "inline content"]
-**Created:** [~/.claude/<path> or <project>/CLAUDE.md]
+**Created:** [~/.claude/<path> or <project>/.claude/<path>]
 **Scope:** personal|project
 **Type:** [rule|agent|skill|command]
 **Weight:** [lightweight|heavyweight]
@@ -430,6 +460,6 @@ Edit the agent file's frontmatter to set the confirmed model.
 /rewrite-ccasset [Cursor rules with style prefs + project config]
 → Single input → Step 2: complex → Step 2a: decomposer
 → 6 components, mixed scopes
-→ Personal (3): written to ~/.claude/skills/
-→ Project (3): user prompted → appended to CLAUDE.md
+→ Personal (3): written to ~/.claude/rules/ and ~/.claude/skills/
+→ Project (3): user prompted → files at <project>/.claude/rules/ and .claude/skills/, references in CLAUDE.md
 ```
