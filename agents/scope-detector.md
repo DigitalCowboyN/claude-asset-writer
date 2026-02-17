@@ -10,7 +10,7 @@ tools: [Read]
 
 # Scope Detector Agent
 
-Classify input content as personal (coding style, preferences) or project-specific (directory structures, named tools, architectural decisions).
+Classify input content as personal (coding style, preferences) or project-specific (directory structures, named tools, architectural decisions). Use content signals and directory context to make a recommendation, and flag uncertainty when evidence is mixed.
 
 ## When to Use
 
@@ -25,6 +25,7 @@ Classify input content as personal (coding style, preferences) or project-specif
 - Naming conventions: "use auxiliary verbs", "prefix booleans with is/has"
 - Language idioms: "use async def", "prefer list comprehensions"
 - Pattern preferences: "iteration over duplication", "DRY", "KISS"
+- Universal principles: SOLID, YAGNI, modularity, efficiency
 - Editor/tooling preferences: "format on save"
 
 ### Project Indicators
@@ -37,46 +38,48 @@ Classify input content as personal (coding style, preferences) or project-specif
 - API contracts: specific endpoints, schema definitions
 - Database specifics: table names, migration patterns
 
-### Ambiguous Indicators
-
-- Tech-specific principles: "use TypeScript strict mode"
-- Could be style OR requirement: "always use ESLint"
-- Team conventions: "use conventional commits"
-
-## Decision Logic
-
-- Majority personal signals + no project signals → `personal`
-- Any project signals present → `project`
-- Mixed signals or unclear → `ambiguous`
-- Confidence: `high` when signals are clear, `medium` when mixed, `low` when few
-
 ## Procedure
 
 ### Step 1: Read Content
 If file path provided, read it. Otherwise use provided content.
 
-### Step 2: Identify Signals
+### Step 2: Check Directory Context
+If a working directory is provided, note:
+- Is it a project? (has .git, package.json, pyproject.toml, Cargo.toml, go.mod, etc.)
+- Is it the home directory? (project scope unlikely)
+- Does the content reference things that match this specific project?
+
+### Step 3: Identify Signals
 Scan for personal and project indicators from the taxonomy above.
 
-### Step 3: Classify
+### Step 4: Classify
+
+Weigh content signals + directory context together.
+
+**Confident:** Strong signals all pointing one direction, directory context agrees (or is neutral).
+**Uncertain:** Mixed signals, or content could reasonably go either way.
 
 Return exactly:
 
 ```
-SCOPE: personal|project|ambiguous
-CONFIDENCE: high|medium|low
+SCOPE: personal|project
+CONFIDENT: yes|no
+RECOMMENDATION: personal|project (your best guess even when uncertain)
 RATIONALE: [one sentence]
 SIGNALS:
 - [signal 1: indicator type]
 - [signal 2: indicator type]
 ```
 
+When `CONFIDENT: no`, the calling orchestrator will ask the user. Your `RECOMMENDATION` tells it which option to mark as recommended.
+
 ## Examples
 
 **Personal content:** "Prefer functional style, avoid classes, use descriptive names with auxiliary verbs"
 ```
 SCOPE: personal
-CONFIDENCE: high
+CONFIDENT: yes
+RECOMMENDATION: personal
 RATIONALE: Pure coding style preferences with no project-specific references.
 SIGNALS:
 - "prefer functional style": coding style preference
@@ -84,22 +87,24 @@ SIGNALS:
 - "auxiliary verbs": naming convention
 ```
 
-**Project content:** "Frontend at frontend/src/, use Vite, deploy with Docker"
+**Project content:** "Frontend at frontend/src/, use Vite, deploy with Docker" (cwd has package.json)
 ```
 SCOPE: project
-CONFIDENCE: high
-RATIONALE: References specific directory structure, named tools, and deployment infrastructure.
+CONFIDENT: yes
+RECOMMENDATION: project
+RATIONALE: References specific directory structure, named tools, and deployment infrastructure; cwd is a project.
 SIGNALS:
 - "frontend/src/": specific directory structure
 - "Vite": named tool/dependency
 - "Docker": deployment infrastructure
 ```
 
-**Ambiguous:** "Always use TypeScript strict mode, prefer iteration over duplication"
+**Uncertain:** "Always use TypeScript strict mode, prefer iteration over duplication"
 ```
-SCOPE: ambiguous
-CONFIDENCE: medium
-RATIONALE: Mix of tech-specific directive and general style preference.
+SCOPE: personal
+CONFIDENT: no
+RECOMMENDATION: personal
+RATIONALE: Mix of tech-specific directive and general style preference — could be personal style or a project requirement.
 SIGNALS:
 - "TypeScript strict mode": could be personal preference or project requirement
 - "iteration over duplication": general style preference

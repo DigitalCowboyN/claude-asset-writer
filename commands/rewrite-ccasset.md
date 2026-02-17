@@ -81,34 +81,32 @@ Process results:
 - Simple items → stay as single work items
 - Complex items → dispatch to `asset-decomposer` in parallel, wait for all, flatten results into work items list (replace complex parent with its children)
 
-### Step 1d: Parallel Scope Detection — BARRIER B3
+### Step 1d: Scope Detection — BARRIER B3
 
-For each work item (post-decomposition), dispatch to `scope-detector` in parallel:
-
-```
-Classify the scope of this content:
-<content>[work item N]</content>
-```
+For each work item, analyze scope using the same evidence as Step 3 in the single-item flow:
+1. Dispatch to `scope-detector` in parallel for content signal analysis
+2. Consider cwd context (project markers, git repo, etc.)
+3. Consider content specificity
 
 **BARRIER B3:** Wait for ALL scope detections to return.
 
-Group: personal (no prompt needed), project (batch prompt), ambiguous (batch prompt).
+Group items into: **confident** (clear evidence, no prompt needed) and **uncertain** (any doubt).
 
 ### Step 1e: User Scope Decisions — BARRIER B4
 
-**Project items** — prompt with AskUserQuestion:
-- Header: "Batch scope"
-- Question: "These [N] items appear project-specific: [list with rationale]. How to handle?"
-- Options: "Include all in project at [cwd]" (Recommended) | "Skip all" | "Decide individually"
+If all items are confident → skip this step.
 
-**Ambiguous items** — prompt with AskUserQuestion:
-- Header: "Batch scope"
-- Question: "These [N] items could be personal or project: [list with rationale]."
-- Options: "All personal" | "All project" | "Decide individually"
+If there are uncertain items, prompt with AskUserQuestion:
+- Header: "Scope"
+- Question: "Not sure about scope for these items:\n[list each with brief rationale]\nWhere should they go?"
+- Options:
+  1. "All personal" — add "(Recommended)" if evidence leans personal
+  2. "All project at [cwd]" — add "(Recommended)" if evidence leans project
+  3. "Decide individually"
 
-If "Decide individually": prompt per item with [Include | Personal | Skip].
+If "Decide individually": prompt per item with "Personal" | "Project".
 
-**BARRIER B4:** All scope decisions resolved. Remove skipped items.
+**BARRIER B4:** All scope decisions resolved.
 
 ### Step 1f: Phased Parallel Authoring — BARRIER B5
 
@@ -276,49 +274,30 @@ Present the decomposer's report to the user. **STOP HERE** — decomposition flo
 
 ### Step 3: Scope Detection
 
-Dispatch to `scope-detector`:
+Analyze the content to determine if it's personal or project-scoped.
 
-```
-Classify the scope of this content:
-<content>
-[the input content]
-</content>
-```
+**Evidence to consider:**
+1. **Content signals** — dispatch to `scope-detector` for signal analysis
+2. **Current directory** — if cwd is a project (has git, package.json, pyproject.toml, etc.), project scope is plausible. If cwd is `~` or has no project markers, project scope is unlikely.
+3. **Specificity** — does the content name specific directories, tools, or configs that only make sense in one project?
 
-#### If SCOPE: personal
-Continue to Step 4. Destination = `~/.claude/` (default).
+**Decision:**
 
-#### If SCOPE: project
+If the evidence clearly points one way (strong content signals + directory context agrees) → proceed with that scope. No prompt needed.
+
+If there's any doubt — mixed signals, ambiguous content, or the directory context doesn't match the content signals — ask:
+
 Prompt with AskUserQuestion:
 - Header: "Scope"
-- Question: "This content appears project-specific ([rationale]). How should it be handled?"
+- Question: "[Brief rationale for uncertainty]. Where should this go?"
 - Options:
-  1. "Include in project at [cwd]" (Recommended)
-  2. "Make it personal anyway"
-  3. "Skip this content"
+  1. "Personal (save to ~/.claude/)" — if evidence leans personal, add "(Recommended)"
+  2. "Project (save to [cwd])" — if evidence leans project, add "(Recommended)"
 
-If "Include in project":
-- Determine asset type (Step 4)
-- If rule or skill → create project file + CLAUDE.md reference (Step 5a)
-- If agent or command → dispatch to authoring agent with project destination
-
-If "Make personal": continue to Step 4 with default destination.
-If "Skip": report "Content skipped." and stop.
-
-#### If SCOPE: ambiguous
-Prompt with AskUserQuestion:
-- Header: "Scope"
-- Question: "This could be personal or project-specific ([rationale]). Which is it?"
-- Options:
-  1. "Personal (save to ~/.claude/)"
-  2. "Project (save to [cwd])"
-  3. "Skip"
-
-Route based on user choice.
-
-#### Edge Case: Not in a Project Directory
-If scope is project but cwd is home directory, ask:
-"This looks project-specific, but you're not in a project directory. Make personal, or specify a project path?"
+Route based on answer:
+- Personal → Step 4 with destination `~/.claude/`
+- Project → Step 4, then Step 5a for rules/skills or project destination for agents/commands
+- If user selects "Other" → they can specify a path or say skip
 
 ### Step 4: Determine Asset Type
 

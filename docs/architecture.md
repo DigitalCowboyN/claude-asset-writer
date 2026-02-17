@@ -227,13 +227,17 @@ flowchart TD
 ```mermaid
 flowchart TD
     input["Input Content"]
-    input --> scan{"Scan for Signals"}
+    input --> analyze{"Analyze Evidence"}
 
-    scan -->|"Coding style preferences\nNaming conventions\nLanguage idioms\nPattern preferences"| personal["SCOPE: personal\n-> ~/.claude/"]
+    analyze --> signals["Content Signals\n(personal vs project indicators)"]
+    analyze --> cwd["Directory Context\n(project markers, git repo?)"]
 
-    scan -->|"Specific directories\nNamed tools/dependencies\nArchitectural decisions\nDeployment/infra specifics"| project["SCOPE: project\n-> project .claude/\n(user confirms)"]
+    signals --> decision{"Confident?"}
+    cwd --> decision
 
-    scan -->|"Tech-specific principles\nCould be style OR requirement\nTeam conventions"| ambiguous["SCOPE: ambiguous\n(user decides)"]
+    decision -->|"Yes: clear signals,\ncontext agrees"| proceed["Proceed with\ndetected scope"]
+
+    decision -->|"No: mixed signals,\ncould go either way"| ask["Ask User:\nPersonal or Project?\n(with recommendation)"]
 ```
 
 #### Project Destination Routing
@@ -298,7 +302,7 @@ flowchart TD
 flowchart LR
     subgraph Confirmation Points
         direction TB
-        p0["1. Scope Decision\nProject content detected\n-> user confirms: include, skip, or make personal"]
+        p0["1. Scope Decision\nUncertain scope detected\n-> user chooses: Personal or Project"]
         p1["2. Model Selection\nmodel-selector recommends\n-> user accepts or overrides"]
         p2["3. Decomposition Models\nall model selections at once\n-> user confirms batch"]
         p3["4. Execution Order\nRecommended runtime order\n-> user confirms or corrects"]
@@ -307,7 +311,7 @@ flowchart LR
     end
 ```
 
-**Note:** Personal content flows through without prompting. Only project-scoped and ambiguous content triggers scope confirmation.
+**Note:** When scope is confident (clear signals + directory context), no prompt is needed. Only uncertain items trigger the scope question.
 
 ---
 

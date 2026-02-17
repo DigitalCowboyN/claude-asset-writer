@@ -58,49 +58,25 @@ For each component in the plan:
 
 ### Step 3: Classify Scope for Each Component
 
-For each component, dispatch to `scope-detector`:
+For each component, determine if it's personal or project-scoped:
 
-```
-Classify the scope of this content:
-<content>
-[extracted content for this component]
-</content>
-```
+1. Dispatch to `scope-detector` for content signal analysis
+2. Consider the current directory — if it's a project (git repo, has package.json/pyproject.toml, etc.), project scope is plausible
+3. Consider content specificity — does it name specific directories, tools, or configs tied to one project?
 
-Group results into three categories:
-- **Personal** components → proceed directly to Step 4
-- **Project** components → prompt user (Step 3a)
-- **Ambiguous** components → prompt user (Step 3b)
+**If evidence is clear** → classify as personal or project without prompting.
 
-### Step 3a: Handle Project-Scoped Components
+**If there's any doubt** on one or more components → batch them into a single prompt:
 
-Batch prompt with AskUserQuestion:
+Prompt with AskUserQuestion:
+- Header: "Scope"
+- Question: "Not sure about scope for these:\n1. [name]: [brief rationale]\n2. [name]: [brief rationale]\nWhere should they go?"
+- Options:
+  1. "All personal" — add "(Recommended)" if evidence leans personal
+  2. "All project at [cwd]" — add "(Recommended)" if evidence leans project
+  3. "Decide individually"
 
-```
-These components appear project-specific:
-1. [name]: [rationale from scope-detector]
-2. [name]: [rationale]
-
-How should these be handled?
-```
-
-Options:
-1. "Include all in project at [cwd]" (Recommended)
-2. "Skip all project-specific content"
-3. "Decide individually"
-
-If "Decide individually": prompt per component with options [Include | Skip | Make personal].
-
-### Step 3b: Handle Ambiguous Components
-
-Prompt per component with AskUserQuestion:
-
-```
-Could be personal or project-specific:
-- [name]: [rationale]
-```
-
-Options: [Personal | Project | Skip]
+If "Decide individually": prompt per component with "Personal" | "Project".
 
 ### Step 4: Dispatch to Authoring Agents
 
